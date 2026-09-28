@@ -3,8 +3,9 @@
 Create a searchable library of the valuable moments buried in meeting recordings—without
 deploying infrastructure.
 
-Cowork reads the meeting transcripts or captions you provide, proposes verified moments,
-asks you to approve them, and returns:
+Cowork searches the authorized Microsoft 365 meeting window and series you choose, reads
+available transcripts for the selected meetings, proposes verified moments, asks you to
+approve them, and returns:
 
 - a searchable HTML library;
 - a CSV ready for Microsoft Lists or another system; and
@@ -15,17 +16,29 @@ verified timestamp.
 
 ## Validation status
 
-Version **1.0.0** passed:
+Version **1.1.0** adds discovery-first meeting and transcript retrieval. Attachment upload
+remains available when native discovery or transcript access is blocked. It also includes
+all fixes requested by the Copilot review on CAT Agent Skills PR #347.
 
-- seven neutral fixture tests;
+Validation now includes:
+
+- thirteen neutral fixture and security regression tests;
 - CAT Agent Skills metadata validation and production site build;
 - bundle inspection confirming no tests, caches, private identifiers, or internal host
   assumptions; and
 - a real Cowork acceptance test using a synthetic VTT transcript.
+- bounded Microsoft 365 meeting discovery;
+- successful transcript-object discovery for an organizer-owned meeting; and
+- a verified permission-denied fallback for a meeting whose transcript was not accessible.
 
 In the Cowork test, the skill invoked successfully, selected the correct timestamped
 how-to, excluded an unrelated decision, displayed the review table, required explicit
 approval, and generated HTML, CSV, and JSON with one approved entry and zero warnings.
+
+Security and quality regression coverage includes output-path traversal, CSV formula
+injection, fractional timestamps, invalid and over-limit durations, accessible controls,
+evidence-note privacy settings, unsafe links, HTML/script injection, and required-field
+validation.
 
 ## Install
 
@@ -50,13 +63,15 @@ Keep the folder name unchanged; it must match the `name` in `SKILL.md`.
 
 ## Use
 
-Attach one or more `.vtt`, `.srt`, or `.txt` transcripts, or content Cowork can access,
-then ask:
+Ask Cowork to search a bounded date range and named meeting series:
 
-> Build a how-to library from these meeting transcripts.
+> Build a how-to library from the Architecture Office Hours meetings in the last 30 days.
 
-The skill asks what kind of moments to capture, shows every proposed entry for approval,
-then delivers the three files.
+The skill shows matching meetings, asks which ones to process when needed, reads accessible
+transcripts, shows every proposed entry for approval, then delivers the three files.
+
+If Cowork cannot reach a transcript or durable recording link, attach `.vtt`, `.srt`, or
+`.txt` captions and the authorized recording/recap URL.
 
 Other capture types include decision logs, customer voice, demo highlights, lessons
 learned, onboarding moments, and custom criteria.
@@ -69,7 +84,35 @@ The default deployment requires:
 - meeting transcripts, captions, or recordings the user is authorized to use; and
 - no external server, Dataverse environment, MCP tool, tunnel, or separate agent.
 
-See `references/customer-deployment.md`.
+Native meeting discovery depends on the customer's Microsoft 365 permissions and Cowork
+runtime capabilities. The skill reports access blockers and falls back to attachments
+rather than silently returning an empty library.
+
+### Fastest customer deployment
+
+1. Install the skill from CAT Agent Skills or upload its ZIP in Cowork.
+2. Start a new Cowork session.
+3. Ask Cowork to search an authorized date window and named meeting series.
+4. Select meetings when multiple occurrences match.
+5. Let Cowork read accessible transcripts; attach captions only for blocked meetings.
+6. Review, approve, edit, hold, or reject proposed moments.
+7. Download the HTML, CSV, and JSON files.
+8. Optionally upload approved files to SharePoint or OneDrive after confirming the exact
+   destination.
+
+### Acceptance checklist
+
+- [ ] Skill is visible in a new Cowork session
+- [ ] Bounded discovery returns the intended meeting series
+- [ ] Transcript metadata resolves to the correct occurrence
+- [ ] Transcript segments are readable or an attachment fallback is offered
+- [ ] Every candidate has transcript evidence and an exact timestamp
+- [ ] No presenter is guessed
+- [ ] Review is shown before final generation
+- [ ] Only approved, verified entries with HTTPS recording links appear in HTML
+- [ ] CSV and JSON contain consistent IDs and timestamps
+- [ ] Full transcript text is absent from final files
+- [ ] Optional upload is explicitly confirmed
 
 ## Privacy
 

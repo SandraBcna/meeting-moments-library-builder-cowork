@@ -10,8 +10,8 @@
 | `session` | yes | Meeting/session title supplied by the user or source |
 | `date` | no | ISO `YYYY-MM-DD` when known |
 | `presenter` | no | Use only when evidenced; otherwise `Unattributed` |
-| `startSeconds` | yes | Non-negative integer from transcript timing |
-| `endSeconds` | no | Integer greater than `startSeconds` |
+| `startSeconds` | yes | Non-negative number from transcript timing; milliseconds are preserved |
+| `endSeconds` | no | Number greater than `startSeconds` |
 | `durationSeconds` | no | Generated from start/end when omitted |
 | `recordingUrl` | no | HTTPS only; required for publish-ready entries |
 | `outcome` | yes | One sentence explaining the reusable value |

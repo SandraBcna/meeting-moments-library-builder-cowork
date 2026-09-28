@@ -226,10 +226,230 @@ class LibraryBuilderTests(unittest.TestCase):
                     root / "output",
                 )
 
+    def test_fractional_timestamps_are_preserved(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            source = root / "entries.json"
+            source.write_text(
+                json.dumps(
+                    [
+                        {
+                            "title": "Precise moment",
+                            "captureType": "how-to",
+                            "session": "Demo",
+                            "startSeconds": 5.5,
+                            "endSeconds": 34.75,
+                            "recordingUrl": "https://contoso.example/demo",
+                            "outcome": "Preserves transcript timing.",
+                            "verification": "verified",
+                            "approval": "approved",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            out = root / "output"
+            run_script(
+                "build_library.py",
+                "--entries",
+                source,
+                "--config",
+                config,
+                "--out-dir",
+                out,
+            )
+            entry = json.loads(
+                (out / "meeting-moments-library.json").read_text(encoding="utf-8")
+            )["entries"][0]
+            self.assertEqual(5.5, entry["startSeconds"])
+            self.assertEqual(34.75, entry["endSeconds"])
+            self.assertEqual(29.25, entry["durationSeconds"])
+            self.assertEqual("0:05.5", entry["startTimestamp"])
+
+    def test_invalid_duration_and_over_limit_entries_fail_validation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            for duration in ("five", 301):
+                with self.subTest(duration=duration):
+                    source = root / f"entries-{duration}.json"
+                    source.write_text(
+                        json.dumps(
+                            [
+                                {
+                                    "title": "Invalid duration",
+                                    "captureType": "how-to",
+                                    "session": "Demo",
+                                    "startSeconds": 0,
+                                    "durationSeconds": duration,
+                                    "recordingUrl": "https://contoso.example/demo",
+                                    "outcome": "Validation test.",
+                                    "verification": "verified",
+                                    "approval": "approved",
+                                }
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        run_script(
+                            "build_library.py",
+                            "--entries",
+                            source,
+                            "--config",
+                            config,
+                            "--out-dir",
+                            root / f"output-{duration}",
+                        )
+
+    def test_output_base_name_cannot_escape_output_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config_data = json.loads(CONFIG.read_text(encoding="utf-8"))
+            config_data["output"]["baseName"] = "../../outside"
+            config = root / "config.json"
+            config.write_text(json.dumps(config_data), encoding="utf-8")
+            source = root / "entries.json"
+            source.write_text(
+                json.dumps(
+                    [
+                        {
+                            "title": "Safe entry",
+                            "captureType": "how-to",
+                            "session": "Demo",
+                            "startSeconds": 0,
+                            "recordingUrl": "https://contoso.example/demo",
+                            "outcome": "Should not be written outside output.",
+                            "verification": "verified",
+                            "approval": "approved",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(subprocess.CalledProcessError):
+                run_script(
+                    "build_library.py",
+                    "--entries",
+                    source,
+                    "--config",
+                    config,
+                    "--out-dir",
+                    root / "output",
+                )
+            self.assertFalse((root.parent / "outside.json").exists())
+
+    def test_csv_formula_fields_are_neutralized(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            source = root / "entries.json"
+            source.write_text(
+                json.dumps(
+                    [
+                        {
+                            "title": "=HYPERLINK(\"https://bad.example\")",
+                            "captureType": "custom",
+                            "session": "+SUM(1,1)",
+                            "startSeconds": 0,
+                            "recordingUrl": "https://contoso.example/demo",
+                            "outcome": "@unsafe",
+                            "verification": "verified",
+                            "approval": "approved",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            out = root / "output"
+            run_script(
+                "build_library.py",
+                "--entries",
+                source,
+                "--config",
+                config,
+                "--out-dir",
+                out,
+            )
+            with (out / "meeting-moments-library.csv").open(
+                encoding="utf-8-sig", newline=""
+            ) as handle:
+                row = next(csv.DictReader(handle))
+            self.assertTrue(row["title"].startswith("'="))
+            self.assertTrue(row["session"].startswith("'+"))
+            self.assertTrue(row["outcome"].startswith("'@"))
+
+    def test_json_privacy_setting_removes_evidence_notes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config_data = json.loads(CONFIG.read_text(encoding="utf-8"))
+            config_data["output"]["includeEvidenceNotesInJson"] = False
+            config = root / "config.json"
+            config.write_text(json.dumps(config_data), encoding="utf-8")
+            source = root / "entries.json"
+            source.write_text(
+                json.dumps(
+                    [
+                        {
+                            "title": "Privacy setting",
+                            "captureType": "how-to",
+                            "session": "Demo",
+                            "startSeconds": 0,
+                            "recordingUrl": "https://contoso.example/demo",
+                            "outcome": "Evidence note should be omitted.",
+                            "verification": "verified",
+                            "approval": "approved",
+                            "evidenceNote": "Sensitive supporting detail",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            out = root / "output"
+            run_script(
+                "build_library.py",
+                "--entries",
+                source,
+                "--config",
+                config,
+                "--out-dir",
+                out,
+            )
+            entry = json.loads(
+                (out / "meeting-moments-library.json").read_text(encoding="utf-8")
+            )["entries"][0]
+            self.assertNotIn("evidenceNote", entry)
+
+    def test_generated_controls_have_accessible_names(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            source = root / "entries.json"
+            source.write_text("[]", encoding="utf-8")
+            out = root / "output"
+            run_script(
+                "build_library.py",
+                "--entries",
+                source,
+                "--config",
+                config,
+                "--out-dir",
+                out,
+            )
+            page = (out / "meeting-moments-library.html").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn('aria-label="Search moments"', page)
+            self.assertIn('aria-label="Filter by category"', page)
+
     def test_template_json_files_are_valid(self):
         json.loads(CONFIG.read_text(encoding="utf-8"))
         json.loads((ROOT / "assets" / "entries.example.json").read_text(encoding="utf-8"))
-        json.loads((ROOT / "metadata.json").read_text(encoding="utf-8"))
+        metadata = json.loads((ROOT / "metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(["Cowork"], metadata["platforms"])
+        self.assertEqual("1.1.0", metadata["version"])
+        self.assertTrue((ROOT / "references" / "meeting-discovery.md").exists())
 
 
 if __name__ == "__main__":

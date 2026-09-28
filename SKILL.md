@@ -1,12 +1,14 @@
 ---
 name: meeting-moments-library-builder-cowork
 description: >
-  Builds a reviewable library of verified moments from meeting transcripts, captions,
-  notes, or accessible recordings supplied in Microsoft 365 Copilot Cowork. Use whenever
+  Discovers the user's authorized Microsoft 365 meetings and transcripts, then builds a
+  reviewable library of verified moments in Microsoft 365 Copilot Cowork. Use whenever
   the user wants a how-to library, decision log, customer-voice library, demo highlights,
   lessons-learned archive, onboarding library, or another searchable collection of
-  timestamped meeting moments. Ask what to capture first, ingest only content the user is
-  authorized to use, verify every proposed entry against transcript evidence, require
+  timestamped meeting moments. Search the date range and meeting series the user chooses
+  using native Microsoft 365 meeting/transcript capabilities; fall back to attached
+  transcripts only when discovery or transcript access is unavailable. Verify every
+  proposed entry against transcript evidence, require
   approval before publication, then deliver portable HTML, CSV, and JSON library files.
   Never invent a timestamp, presenter, recording link, or quote. Never publish transcript
   content, upload files, or write to SharePoint without explicit confirmation.
@@ -18,7 +20,8 @@ license: MIT
 
 # Meeting Moments Library Builder for Cowork
 
-Turn supplied or accessible meeting content into a portable library of verified moments.
+Find authorized Microsoft 365 meeting transcripts and turn them into a portable library
+of verified moments.
 The default workflow needs no Scout, MCP server, Dataverse table, tunnel, or deployed
 agent.
 
@@ -45,7 +48,8 @@ Do not finish with only a chat summary. Return the files unless the user cancels
    - onboarding moments; or
    - a custom type.
 3. If the user already specified the type, confirm it in one line instead of re-asking.
-4. Ask the user to attach or identify the meeting content they are authorized to use.
+4. Ask for the date range and meeting series, titles, organizers, or keywords to search.
+   Offer transcript upload only as a fallback.
 
 Read `references/capture-types.md` before applying a preset.
 
@@ -53,8 +57,12 @@ Read `references/capture-types.md` before applying a preset.
 
 ### Cowork default
 
-- Inputs arrive as chat attachments, pasted text, or Microsoft 365 content the current
-  user is authorized to access.
+- Discover meetings first through the runtime's native Microsoft 365 meeting capabilities.
+- When available, use `workiq_list_meetings` for the chosen window, then
+  `workiq_list_meeting_transcripts` and `workiq_get_meeting_transcript` for explicitly
+  selected meetings.
+- Never scan an unbounded calendar. Use the user-approved date window and meeting filters.
+- Inputs may also arrive as chat attachments, pasted text, or Microsoft 365 work context.
 - Use attached `.vtt`, `.srt`, or `.txt` transcripts directly. If audio/video
   transcription is available in the runtime, it may be used; otherwise ask for captions
   or a transcript.
@@ -74,7 +82,7 @@ Microsoft 365, deploy an agent, or publish to SharePoint by itself.
 Confirm:
 
 1. the capture type and qualification criteria;
-2. which meeting files or links are in scope;
+2. the date range and meeting series/titles/organizers/keywords in scope;
 3. whether external-customer content is allowed;
 4. the maximum duration of one moment; and
 5. whether the output is for personal use, team review, or later publication.
@@ -85,7 +93,31 @@ the issue as an approval blocker.
 
 Read `references/privacy-and-safety.md`.
 
-## Phase 2 — Ingest meeting content
+## Phase 2 — Discover meetings and transcripts
+
+Read `references/meeting-discovery.md`.
+
+1. Search the bounded date range with the runtime's native meeting capability
+   (`workiq_list_meetings` when available).
+2. Filter by the user-approved series, title, organizer, or keyword.
+3. Show a candidate meeting table with title, date, organizer, transcript availability,
+   and recording/recap-link availability.
+4. Ask the user which meetings to process when the scope contains multiple plausible
+   meetings. Do not read every transcript merely because it is accessible.
+5. For each selected meeting, list transcript metadata
+   (`workiq_list_meeting_transcripts`) and select the transcript matching that occurrence.
+   Recurring-series transcript order is not reliable; match by meeting occurrence/date,
+   not array position.
+6. Read transcript segments (`workiq_get_meeting_transcript`) in bounded pages until the
+   selected transcript is complete.
+7. Resolve a durable recording or recap URL only from authorized Microsoft 365 metadata or
+   user-supplied work context. Never use the Teams join URL as if it were a recording link.
+
+If discovery, transcript access, or recording-link resolution fails, state the precise
+blocker and offer the attachment fallback. Do not claim no transcript exists merely
+because one API call failed.
+
+## Phase 3 — Attachment fallback
 
 Supported inputs:
 
@@ -105,7 +137,7 @@ The parser normalizes timestamps and removes markup. If a file cannot be read, s
 file failed and offer: re-upload, another format, pasted text, or skip with a recorded
 blocker. Never fabricate missing transcript content.
 
-## Phase 3 — Identify candidates
+## Phase 4 — Identify candidates
 
 Use `capture.criteria` from the selected preset. For each candidate capture:
 
@@ -134,7 +166,7 @@ Rules:
 
 Use the schema in `references/output-schema.md`.
 
-## Phase 4 — Review before publication
+## Phase 5 — Review before publication
 
 Show a compact review table with:
 
@@ -153,7 +185,7 @@ fields, or cancel.
 Do not generate a publish-ready library before confirmation. Draft output may be created
 for review, but label it `draft`.
 
-## Phase 5 — Build the library files
+## Phase 6 — Build the library files
 
 Write the approved entries to `working/entries.json`, then run:
 
@@ -168,7 +200,7 @@ The script validates every entry, emits HTML/CSV/JSON, escapes untrusted text, a
 only HTTPS recording links. Read its JSON summary and surface every warning. Never hand
 edit a generated total or silently drop an invalid entry.
 
-## Phase 6 — Deliver or optionally publish
+## Phase 7 — Deliver or optionally publish
 
 Default: return the three files as Cowork attachments.
 

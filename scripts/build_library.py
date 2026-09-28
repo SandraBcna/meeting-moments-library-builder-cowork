@@ -9,6 +9,7 @@ import csv
 import hashlib
 import html
 import json
+import math
 import pathlib
 import re
 import urllib.parse
@@ -27,6 +28,8 @@ CAPTURE_TYPES = {
 VERIFICATION = {"verified", "needs-review", "blocked"}
 APPROVAL = {"approved", "held", "rejected"}
 SLUG = re.compile(r"[^a-z0-9]+")
+SAFE_BASE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
 def stable_id(entry: dict[str, Any]) -> str:
@@ -42,10 +45,20 @@ def stable_id(entry: dict[str, Any]) -> str:
     return f"{slug or 'moment'}-{digest}"
 
 
-def timestamp(seconds: int) -> str:
+def timestamp(seconds: float) -> str:
     hours, remainder = divmod(seconds, 3600)
     minutes, secs = divmod(remainder, 60)
-    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes}:{secs:02d}"
+    whole_hours = int(hours)
+    whole_minutes = int(minutes)
+    if math.isclose(secs, round(secs), abs_tol=0.0005):
+        sec_text = f"{int(round(secs)):02d}"
+    else:
+        sec_text = f"{secs:06.3f}".rstrip("0").rstrip(".")
+    return (
+        f"{whole_hours}:{whole_minutes:02d}:{sec_text}"
+        if whole_hours
+        else f"{whole_minutes}:{sec_text}"
+    )
 
 
 def safe_https(value: str) -> str:
@@ -55,7 +68,7 @@ def safe_https(value: str) -> str:
     return value if parsed.scheme.lower() == "https" and parsed.netloc else ""
 
 
-def deep_link(value: str, start_seconds: int) -> str:
+def deep_link(value: str, start_seconds: float) -> str:
     value = safe_https(value)
     if not value:
         return ""
@@ -86,7 +99,25 @@ def require_text(entry: dict[str, Any], key: str, errors: list[str]) -> str:
     return value
 
 
-def normalize_entry(raw: dict[str, Any], position: int) -> tuple[dict[str, Any], list[str]]:
+def number_value(
+    raw: Any, field: str, errors: list[str], *, minimum: float | None = None
+) -> float | None:
+    try:
+        if isinstance(raw, bool):
+            raise ValueError
+        value = float(raw)
+        if not math.isfinite(value) or (minimum is not None and value < minimum):
+            raise ValueError
+        return round(value, 3)
+    except (TypeError, ValueError):
+        qualifier = f" greater than or equal to {minimum:g}" if minimum is not None else ""
+        errors.append(f"{field} must be a finite number{qualifier}")
+        return None
+
+
+def normalize_entry(
+    raw: dict[str, Any], position: int, max_duration_seconds: float
+) -> tuple[dict[str, Any], list[str]]:
     errors: list[str] = []
     title = require_text(raw, "title", errors)
     capture_type = require_text(raw, "captureType", errors)
@@ -101,28 +132,32 @@ def normalize_entry(raw: dict[str, Any], position: int) -> tuple[dict[str, Any],
     if approval and approval not in APPROVAL:
         errors.append(f"approval must be one of {sorted(APPROVAL)}")
 
-    try:
-        start = int(raw.get("startSeconds"))
-        if start < 0:
-            raise ValueError
-    except (TypeError, ValueError):
-        start = 0
-        errors.append("startSeconds must be a non-negative integer")
+    start = number_value(raw.get("startSeconds"), "startSeconds", errors, minimum=0)
+    if start is None:
+        start = 0.0
 
     end_value = raw.get("endSeconds")
     end = None
     if end_value not in (None, ""):
-        try:
-            end = int(end_value)
-            if end <= start:
-                raise ValueError
-        except (TypeError, ValueError):
+        end = number_value(end_value, "endSeconds", errors, minimum=0)
+        if end is not None and end <= start:
             end = None
             errors.append("endSeconds must be greater than startSeconds")
-    duration = int(raw.get("durationSeconds") or ((end - start) if end else 0))
-    if duration < 0:
-        duration = 0
-        errors.append("durationSeconds cannot be negative")
+
+    duration_value = raw.get("durationSeconds")
+    if duration_value in (None, ""):
+        duration = round(end - start, 3) if end is not None else 0.0
+    else:
+        duration = number_value(
+            duration_value, "durationSeconds", errors, minimum=0
+        )
+        if duration is None:
+            duration = 0.0
+    if duration > max_duration_seconds:
+        errors.append(
+            "durationSeconds exceeds configured capture.maxMinutes "
+            f"({max_duration_seconds / 60:g} minutes)"
+        )
 
     original_url = str(raw.get("recordingUrl", "")).strip()
     recording_url = deep_link(original_url, start)
@@ -162,6 +197,28 @@ def script_json(value: Any) -> str:
     )
 
 
+def validate_base_name(value: Any) -> str:
+    base = str(value or "").strip()
+    if (
+        not SAFE_BASE_NAME.fullmatch(base)
+        or base in {".", ".."}
+        or pathlib.PurePath(base).name != base
+    ):
+        raise ValueError(
+            "output.baseName must be a simple filename stem containing only "
+            "letters, numbers, dots, underscores, and hyphens"
+        )
+    return base
+
+
+def csv_safe(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    if value.lstrip().startswith(FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
 def build_html(config: dict[str, Any], entries: list[dict[str, Any]]) -> str:
     approved = [
         entry
@@ -197,7 +254,7 @@ main{{padding:0 24px 48px}}
 <body>
 <header><div><h1>{name}</h1><p>{subtitle}</p></div></header>
 <main>
-<div class="tools"><input id="q" placeholder="Search moments"><select id="category"><option value="">All categories</option></select></div>
+<div class="tools"><label for="q">Search</label><input id="q" aria-label="Search moments" placeholder="Search moments"><label for="category">Category</label><select id="category" aria-label="Filter by category"><option value="">All categories</option></select></div>
 <div id="results" class="grid"></div>
 </main>
 <script>
@@ -232,11 +289,18 @@ def main() -> None:
     entries: list[dict[str, Any]] = []
     issues: list[dict[str, Any]] = []
     seen: set[str] = set()
+    try:
+        max_minutes = float(config.get("capture", {}).get("maxMinutes", 5))
+        if not math.isfinite(max_minutes) or max_minutes <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        raise SystemExit("capture.maxMinutes must be a positive finite number.")
+    max_duration_seconds = max_minutes * 60
     for position, raw in enumerate(raw_entries, 1):
         if not isinstance(raw, dict):
             issues.append({"position": position, "errors": ["entry must be an object"]})
             continue
-        entry, errors = normalize_entry(raw, position)
+        entry, errors = normalize_entry(raw, position, max_duration_seconds)
         if entry["id"] in seen:
             errors.append(f"duplicate id: {entry['id']}")
         seen.add(entry["id"])
@@ -251,6 +315,8 @@ def main() -> None:
             "required" in error
             or "must be one of" in error
             or "startSeconds" in error
+            or "endSeconds" in error
+            or "durationSeconds" in error
             for error in issue["errors"]
         )
     ]
@@ -259,16 +325,30 @@ def main() -> None:
         raise SystemExit(2)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    base = str(config.get("output", {}).get("baseName", "meeting-moments-library"))
+    output_config = config.get("output", {})
+    try:
+        base = validate_base_name(
+            output_config.get("baseName", "meeting-moments-library")
+        )
+    except ValueError as error:
+        print(json.dumps({"status": "error", "errors": [str(error)]}))
+        raise SystemExit(2)
     json_path = args.out_dir / f"{base}.json"
     csv_path = args.out_dir / f"{base}.csv"
     html_path = args.out_dir / f"{base}.html"
 
+    include_evidence = bool(output_config.get("includeEvidenceNotesInJson", True))
+    json_entries = []
+    for entry in entries:
+        serialized = dict(entry)
+        if not include_evidence:
+            serialized.pop("evidenceNote", None)
+        json_entries.append(serialized)
     payload = {
         "schemaVersion": "1.0",
         "libraryName": config.get("libraryName", "Meeting Moments Library"),
         "captureType": config.get("capture", {}).get("type", "custom"),
-        "entries": entries,
+        "entries": json_entries,
         "issues": issues,
     }
     json_path.write_text(
@@ -293,13 +373,13 @@ def main() -> None:
         "approval",
         "sourceLabel",
     ]
-    include_held = bool(config.get("output", {}).get("includeHeldInCsv", True))
+    include_held = bool(output_config.get("includeHeldInCsv", True))
     with csv_path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         for entry in entries:
             if include_held or entry["approval"] == "approved":
-                writer.writerow(entry)
+                writer.writerow({key: csv_safe(value) for key, value in entry.items()})
 
     html_path.write_text(build_html(config, entries), encoding="utf-8")
     approved = sum(

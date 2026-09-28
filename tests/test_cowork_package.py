@@ -170,7 +170,7 @@ class LibraryBuilderTests(unittest.TestCase):
             self.assertIn("How to configure the approved option", page)
             self.assertNotIn("Held private discussion", page)
 
-    def test_html_escapes_script_content_and_unsafe_url_is_not_published(self):
+    def test_unsafe_url_rejects_entry_before_output(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)
             config = self.make_config(root)
@@ -189,25 +189,98 @@ class LibraryBuilderTests(unittest.TestCase):
             source = root / "entries.json"
             source.write_text(json.dumps(entries), encoding="utf-8")
             out = root / "output"
-            result = run_script(
-                "build_library.py",
-                "--entries",
-                source,
-                "--config",
-                config,
-                "--out-dir",
-                out,
+            with self.assertRaises(subprocess.CalledProcessError):
+                run_script(
+                    "build_library.py",
+                    "--entries",
+                    source,
+                    "--config",
+                    config,
+                    "--out-dir",
+                    out,
+                )
+            self.assertFalse((out / "meeting-moments-library.html").exists())
+            self.assertFalse((out / "meeting-moments-library.json").exists())
+
+    def test_entry_without_recording_link_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            source = root / "entries.json"
+            source.write_text(
+                json.dumps(
+                    [
+                        {
+                            "title": "Transcript-only candidate",
+                            "captureType": "how-to",
+                            "session": "Demo",
+                            "startSeconds": 15,
+                            "outcome": "Verified in the transcript but no recording exists.",
+                            "verification": "verified",
+                            "approval": "approved",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
             )
-            summary = json.loads(result.stdout)
-            self.assertEqual(0, summary["approvedForHtml"])
-            page = (out / "meeting-moments-library.html").read_text(
-                encoding="utf-8"
-            )
-            self.assertNotIn("</script><script>alert(1)</script>", page)
-            payload = json.loads(
-                (out / "meeting-moments-library.json").read_text(encoding="utf-8")
-            )
-            self.assertEqual("", payload["entries"][0]["recordingUrl"])
+            out = root / "output"
+            with self.assertRaises(subprocess.CalledProcessError):
+                run_script(
+                    "build_library.py",
+                    "--entries",
+                    source,
+                    "--config",
+                    config,
+                    "--out-dir",
+                    out,
+                )
+            self.assertFalse((out / "meeting-moments-library.json").exists())
+
+    def test_malformed_and_credential_bearing_urls_are_validation_issues(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            for index, recording_url in enumerate(
+                (
+                    "https://[",
+                    "https://user:password@contoso.example/recording",
+                    "https://contoso.example:99999/recording",
+                    "https://contoso.example/\nrecording",
+                )
+            ):
+                with self.subTest(recording_url=recording_url):
+                    source = root / f"entries-{index}.json"
+                    source.write_text(
+                        json.dumps(
+                            [
+                                {
+                                    "title": "Unsafe URL",
+                                    "captureType": "custom",
+                                    "session": "Demo",
+                                    "startSeconds": 1,
+                                    "recordingUrl": recording_url,
+                                    "outcome": "URL validation test.",
+                                    "verification": "verified",
+                                    "approval": "approved",
+                                }
+                            ]
+                        ),
+                        encoding="utf-8",
+                    )
+                    out = root / f"output-{index}"
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        run_script(
+                            "build_library.py",
+                            "--entries",
+                            source,
+                            "--config",
+                            config,
+                            "--out-dir",
+                            out,
+                        )
+                    self.assertFalse(
+                        (out / "meeting-moments-library.json").exists()
+                    )
 
     def test_missing_required_field_fails(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -448,8 +521,14 @@ class LibraryBuilderTests(unittest.TestCase):
         json.loads((ROOT / "assets" / "entries.example.json").read_text(encoding="utf-8"))
         metadata = json.loads((ROOT / "metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(["Cowork"], metadata["platforms"])
-        self.assertEqual("1.1.0", metadata["version"])
+        self.assertEqual("1.2.0", metadata["version"])
         self.assertTrue((ROOT / "references" / "meeting-discovery.md").exists())
+        skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        discovery = (ROOT / "references" / "meeting-discovery.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("excludes the meeting before candidate extraction", skill)
+        self.assertIn("skip the meeting before", discovery)
 
 
 if __name__ == "__main__":

@@ -110,8 +110,11 @@ Read `references/meeting-discovery.md`.
    not array position.
 6. Read transcript segments (`workiq_get_meeting_transcript`) in bounded pages until the
    selected transcript is complete.
-7. Resolve a durable recording or recap URL only from authorized Microsoft 365 metadata or
-   user-supplied work context. Never use the Teams join URL as if it were a recording link.
+7. Resolve the recording/recap URL automatically using the approved ladder in
+   `references/meeting-discovery.md`. Never use the Teams join URL or calendar event URL as
+   if it were the recording link.
+8. Only after both transcript content and a verified recording URL are available, inspect
+   the transcript for candidate moments.
 
 If discovery, transcript access, or recording-link resolution fails, state the precise
 blocker and offer the attachment fallback. Do not claim no transcript exists merely
@@ -161,8 +164,9 @@ Rules:
 - Keep each moment within the approved duration unless the user approves splitting it.
 - Do not store full transcript text in the library.
 - Do not infer a presenter from speaking style, meeting title, or calendar organizer.
-- A missing recording URL is allowed for a draft candidate, but it cannot be marked
-  publish-ready.
+- A missing recording URL excludes the meeting before candidate extraction. Report the
+  meeting under skipped sources with the precise automatic-resolution blocker. Do not
+  create a candidate or output row, and do not ask the user to hunt for or paste a URL.
 
 Use the schema in `references/output-schema.md`.
 

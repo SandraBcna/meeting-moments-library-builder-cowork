@@ -13,7 +13,7 @@
 | `startSeconds` | yes | Non-negative number from transcript timing; milliseconds are preserved |
 | `endSeconds` | no | Number greater than `startSeconds` |
 | `durationSeconds` | no | Generated from start/end when omitted |
-| `recordingUrl` | no | HTTPS only; required for publish-ready entries |
+| `recordingUrl` | yes | Automatically resolved HTTPS recording/recap URL |
 | `outcome` | yes | One sentence explaining the reusable value |
 | `category` | no | User-approved grouping |
 | `verification` | yes | `verified`, `needs-review`, or `blocked` |
@@ -21,5 +21,6 @@
 | `evidenceNote` | no | Short provenance note without full transcript text |
 | `sourceLabel` | no | Human label, not a local filesystem path |
 
-Only entries with `verification: verified` and `approval: approved` appear in the public
-HTML view. Held and rejected entries remain in JSON for audit and are marked in CSV.
+The builder rejects any entry without a validated HTTPS recording URL. Meetings without
+an automatically resolved recording are excluded before candidate extraction and never
+appear in HTML, CSV, or JSON.

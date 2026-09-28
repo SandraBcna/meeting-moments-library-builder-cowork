@@ -64,8 +64,23 @@ def timestamp(seconds: float) -> str:
 def safe_https(value: str) -> str:
     if not value:
         return ""
-    parsed = urllib.parse.urlparse(value)
-    return value if parsed.scheme.lower() == "https" and parsed.netloc else ""
+    try:
+        parsed = urllib.parse.urlparse(value)
+        hostname = parsed.hostname
+        # Accessing port validates malformed and out-of-range values.
+        parsed.port
+    except ValueError:
+        return ""
+    if (
+        parsed.scheme.lower() != "https"
+        or not parsed.netloc
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or any(character.isspace() or ord(character) < 32 for character in value)
+    ):
+        return ""
+    return value
 
 
 def deep_link(value: str, start_seconds: float) -> str:
@@ -160,6 +175,8 @@ def normalize_entry(
         )
 
     original_url = str(raw.get("recordingUrl", "")).strip()
+    if not original_url:
+        errors.append("recordingUrl is required")
     recording_url = deep_link(original_url, start)
     if original_url and not recording_url:
         errors.append("recordingUrl must be HTTPS")
@@ -317,6 +334,7 @@ def main() -> None:
             or "startSeconds" in error
             or "endSeconds" in error
             or "durationSeconds" in error
+            or "recordingUrl" in error
             for error in issue["errors"]
         )
     ]

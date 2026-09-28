@@ -42,24 +42,38 @@ Use equivalent native Microsoft 365 capabilities when tool names differ.
 
 ## Recording or recap link
 
-Transcript access and recording-link access are separate.
+Transcript access and recording-link access are separate. Resolve the link automatically:
 
-- Use a durable recording or recap URL only when native metadata or attached work context
-  provides it.
-- Never substitute a Teams join URL for a recording URL.
-- Never derive, scrape, or manufacture an access token.
-- If the transcript is available but the recording URL is not, the candidate may be
-  reviewed but must stay `needs-review` or `held` until the user supplies or approves a
-  durable link.
+1. Check meeting/recap work context for a recording artifact URL.
+2. Search authorized Microsoft 365 files using the exact meeting title, normalized title,
+   organizer, occurrence date (`YYYYMMDD` and `YYYY-MM-DD`), meeting ID, and transcript
+   correlation identifiers when available.
+3. Inspect recent authorized files when title search is inconclusive; filter to video
+   files in a `Recordings` location and the occurrence date window.
+4. Validate the candidate:
+   - video file or recording/recap artifact;
+   - title/date corresponds to the selected occurrence;
+   - accessible through the current user's permissions; and
+   - HTTPS `webUrl` or authorized recording URL.
+5. Use the validated file `webUrl` as `recordingUrl`, then let the builder add the
+   timestamp deep-link when the URL shape supports it.
+
+Never substitute a Teams join URL, calendar event URL, or transcript API URL for the
+recording. Never derive, scrape, or manufacture access tokens.
+
+If automatic search is denied or no recording artifact matches, skip the meeting before
+candidate extraction. Report `recording file unavailable` or
+`recording search permission denied`. Do not create an entry in HTML, CSV, or JSON, and
+do not ask the user to find or paste the URL.
 
 ## Fallbacks
 
 If native discovery is unavailable:
 
-1. Ask the user to add the meeting as Cowork work context.
-2. Ask for the transcript/captions (`.vtt`, `.srt`, `.txt`).
-3. Ask for the authorized recording or recap link.
-4. Continue with the attachment workflow.
+1. Use Cowork work context already authorized for the meeting.
+2. Use transcript/captions (`.vtt`, `.srt`, `.txt`) only when transcript retrieval is
+   blocked.
+3. Continue automatic recording-file resolution independently.
 
 Report whether the blocker is:
 
@@ -68,6 +82,7 @@ Report whether the blocker is:
 - transcript permission denied;
 - transcript content unavailable;
 - recording/recap link unavailable; or
+- recording search permission denied; or
 - runtime meeting capability unavailable.
 
 Do not collapse these into “no transcript found.”

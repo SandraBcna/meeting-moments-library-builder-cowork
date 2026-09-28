@@ -16,13 +16,16 @@ verified timestamp.
 
 ## Validation status
 
-Version **1.1.0** adds discovery-first meeting and transcript retrieval. Attachment upload
-remains available when native discovery or transcript access is blocked. It also includes
-all fixes requested by the Copilot review on CAT Agent Skills PR #347.
+Version **1.2.0** adds discovery-first meeting/transcript retrieval and mandatory automatic
+recording-link resolution. Cowork only extracts candidates after both the transcript and a
+matching authorized recording file are available. Attachment upload remains available
+when native transcript access is blocked, but users are never asked to find recording URLs.
+This release also includes all fixes requested by the Copilot review on CAT Agent Skills
+PR #347.
 
 Validation now includes:
 
-- thirteen neutral fixture and security regression tests;
+- fifteen neutral fixture and security regression tests;
 - CAT Agent Skills metadata validation and production site build;
 - bundle inspection confirming no tests, caches, private identifiers, or internal host
   assumptions; and
@@ -30,6 +33,7 @@ Validation now includes:
 - bounded Microsoft 365 meeting discovery;
 - successful transcript-object discovery for an organizer-owned meeting; and
 - a verified permission-denied fallback for a meeting whose transcript was not accessible.
+- automatic recording-file resolution through authorized Microsoft 365 file search.
 
 The real Cowork discovery-only test invoked the custom skill, found the exact bounded
 calendar occurrence, confirmed one associated transcript object, and completed without
@@ -41,8 +45,8 @@ approval, and generated HTML, CSV, and JSON with one approved entry and zero war
 
 Security and quality regression coverage includes output-path traversal, CSV formula
 injection, fractional timestamps, invalid and over-limit durations, accessible controls,
-evidence-note privacy settings, unsafe links, HTML/script injection, and required-field
-validation.
+evidence-note privacy settings, malformed and credential-bearing URLs, unsafe links,
+HTML/script injection, and required-field validation.
 
 ## Install
 
@@ -76,6 +80,11 @@ transcripts, shows every proposed entry for approval, then delivers the three fi
 
 If Cowork cannot reach a transcript or durable recording link, attach `.vtt`, `.srt`, or
 `.txt` captions and the authorized recording/recap URL.
+
+Because this is a video library, Cowork only extracts candidates after it has automatically
+resolved both the transcript and the recording file. Meetings with transcripts but no
+accessible recording are skipped and reported as blockers. Users may attach captions when
+transcript access is blocked, but they are not asked to find recording links manually.
 
 Other capture types include decision logs, customer voice, demo highlights, lessons
 learned, onboarding moments, and custom criteria.

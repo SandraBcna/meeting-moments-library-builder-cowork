@@ -13,6 +13,25 @@ identifies useful moments, and asks you to approve them before creating:
 Each published entry links to the original recording at its verified timestamp. No video
 is copied, cut, or re-hosted.
 
+## Visual overview
+
+The reusable skill and workflow are public; real meeting content and generated libraries
+remain subject to their source permissions and the intended audience's approval.
+
+![Meeting Moments Library Builder overview](assets/meeting-moments-overview.png)
+
+### Golden path
+
+![Define, discover, verify, review, approve, and deliver](assets/golden-path.png)
+
+### Reference architecture
+
+![Microsoft 365 sources, Cowork orchestration, human review, and portable library](assets/reference-architecture.png)
+
+### Library outputs
+
+![HTML, CSV, and JSON outputs and library presets](assets/library-outputs.png)
+
 ## Download
 
 **[Download Meeting Moments Library Builder for Cowork v1.2.0](https://github.com/SandraBcna/meeting-moments-library-builder-cowork/releases/download/v1.2.0/meeting-moments-library-builder-cowork.zip)**

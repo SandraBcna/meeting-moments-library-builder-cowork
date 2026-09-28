@@ -13,16 +13,19 @@ asks you to approve them, and returns:
 Nothing is cut or re-hosted. Entries point back to the original recording and include the
 verified timestamp.
 
-## Release status
+## Validation status
 
-Version **0.9.0** is a release candidate:
+Version **1.0.0** passed:
 
-- seven neutral fixture tests pass;
-- CAT Agent Skills metadata validation passes;
-- the CAT production site build passes;
-- the installable bundle contains no tests, caches, private identifiers, or internal host
+- seven neutral fixture tests;
+- CAT Agent Skills metadata validation and production site build;
+- bundle inspection confirming no tests, caches, private identifiers, or internal host
   assumptions; and
-- a real Cowork runtime acceptance test is still required before version 1.0.0.
+- a real Cowork acceptance test using a synthetic VTT transcript.
+
+In the Cowork test, the skill invoked successfully, selected the correct timestamped
+how-to, excluded an unrelated decision, displayed the review table, required explicit
+approval, and generated HTML, CSV, and JSON with one approved entry and zero warnings.
 
 ## Install
 

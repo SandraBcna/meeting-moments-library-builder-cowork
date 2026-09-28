@@ -224,4 +224,3 @@ A successful run has:
 - three consistent output files;
 - no unsafe links or transcript leakage; and
 - a clear list of held or blocked candidates.
-

@@ -52,4 +52,3 @@ links, and obtain explicit confirmation.
 When transcript timing is missing or unreliable, hold the candidate rather than inventing
 a timestamp. When speaker attribution is missing, use `Unattributed`. When a recording
 link is missing, keep the entry in draft or hold status.
-

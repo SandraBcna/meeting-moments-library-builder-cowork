@@ -71,4 +71,3 @@ After the portable library proves useful, the customer may separately choose to:
 - schedule a recurring curation process with human approval.
 
 Do not lead with these options. Ship the simple portable library first.
-

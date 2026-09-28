@@ -23,4 +23,3 @@
 
 Only entries with `verification: verified` and `approval: approved` appear in the public
 HTML view. Held and rejected entries remain in JSON for audit and are marked in CSV.
-

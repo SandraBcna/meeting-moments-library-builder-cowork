@@ -15,11 +15,7 @@ is copied, cut, or re-hosted.
 
 ## Download
 
-Download the latest stable package:
-
-**[Meeting Moments Library Builder for Cowork v1.2.0](https://github.com/SandraBcna/meeting-moments-library-builder-cowork/releases/tag/v1.2.0)**
-
-**[Download the skill ZIP directly](https://github.com/SandraBcna/meeting-moments-library-builder-cowork/releases/download/v1.2.0/meeting-moments-library-builder-cowork.zip)**
+**[Download Meeting Moments Library Builder for Cowork v1.2.0](https://github.com/SandraBcna/meeting-moments-library-builder-cowork/releases/download/v1.2.0/meeting-moments-library-builder-cowork.zip)**
 
 ## Install in Cowork
 

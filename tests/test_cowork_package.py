@@ -604,6 +604,10 @@ class LibraryBuilderTests(unittest.TestCase):
             "resolve the correct transcript and recording file automatically",
             readme,
         )
+        version = metadata["version"]
+        self.assertIn(f"v{version}", readme)
+        self.assertIn(f"/releases/download/v{version}/", readme)
+        self.assertNotRegex(readme, r"\bv(?!1\.2\.0)\d+\.\d+\.\d+\b")
 
 
 if __name__ == "__main__":

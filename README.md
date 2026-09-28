@@ -120,10 +120,25 @@ Version 1.2.0 has been tested in Cowork for meeting discovery, recurring-occurre
 matching, transcript discovery, automatic recording-file resolution, approval gating, and
 HTML/CSV/JSON generation.
 
-## License and support
+## Important disclaimer
 
-This community skill is provided as-is under the [MIT License](LICENSE). It is not an
-official Microsoft product, certification, or support commitment.
+This community skill is provided **as is** under the [MIT License](LICENSE). It is not
+an official Microsoft product, certification, or Microsoft support commitment. A
+community-gallery listing does not constitute production approval.
+
+The testing described above is non-production validation, not a guarantee that the
+skill will find every meeting or that its output is accurate, secure, compliant,
+licensed, or suitable for another organization. Before using or sharing a library,
+adopters must verify recording and transcript access, permission to process and share
+the content, presenter attribution, recording links, sensitivity and retention rules,
+the intended audience, and applicable privacy, security, licensing, and accessibility
+requirements. Human review and approval remain required before generating final files.
+
+Do not commit or upload real recordings, transcripts, private links, customer data,
+credentials, or generated internal libraries to this public repository. This
+disclaimer does not override sensitivity labels or authorize disclosure.
+
+## Security reporting
 
 For potential vulnerabilities in this skill, use GitHub private vulnerability reporting.
 For Microsoft product or service vulnerabilities, follow the guidance in

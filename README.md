@@ -31,6 +31,10 @@ Validation now includes:
 - successful transcript-object discovery for an organizer-owned meeting; and
 - a verified permission-denied fallback for a meeting whose transcript was not accessible.
 
+The real Cowork discovery-only test invoked the custom skill, found the exact bounded
+calendar occurrence, confirmed one associated transcript object, and completed without
+reading, quoting, summarizing, or displaying transcript content.
+
 In the Cowork test, the skill invoked successfully, selected the correct timestamped
 how-to, excluded an unrelated decision, displayed the review table, required explicit
 approval, and generated HTML, CSV, and JSON with one approved entry and zero warnings.

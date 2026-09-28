@@ -10,7 +10,6 @@
   },
   "output": {
     "baseName": "meeting-moments-library",
-    "includeHeldInCsv": true,
     "includeEvidenceNotesInJson": true
   }
 }

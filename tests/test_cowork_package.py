@@ -150,7 +150,7 @@ class LibraryBuilderTests(unittest.TestCase):
             payload = json.loads(
                 (out / "meeting-moments-library.json").read_text(encoding="utf-8")
             )
-            self.assertEqual(2, len(payload["entries"]))
+            self.assertEqual(1, len(payload["entries"]))
             approved = payload["entries"][0]
             query = urllib.parse.parse_qs(
                 urllib.parse.urlparse(approved["recordingUrl"]).query
@@ -162,13 +162,82 @@ class LibraryBuilderTests(unittest.TestCase):
                 encoding="utf-8-sig", newline=""
             ) as handle:
                 rows = list(csv.DictReader(handle))
-            self.assertEqual(2, len(rows))
+            self.assertEqual(1, len(rows))
+            self.assertEqual(
+                "How to configure the approved option", rows[0]["title"]
+            )
 
             page = (out / "meeting-moments-library.html").read_text(
                 encoding="utf-8"
             )
             self.assertIn("How to configure the approved option", page)
             self.assertNotIn("Held private discussion", page)
+            self.assertNotIn(
+                "Held private discussion",
+                (out / "meeting-moments-library.json").read_text(
+                    encoding="utf-8"
+                ),
+            )
+            self.assertNotIn(
+                "Held private discussion",
+                (out / "meeting-moments-library.csv").read_text(
+                    encoding="utf-8-sig"
+                ),
+            )
+
+    def test_nonapproved_states_are_excluded_from_all_outputs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            config = self.make_config(root)
+            entries = []
+            for index, (verification, approval) in enumerate(
+                (
+                    ("verified", "held"),
+                    ("verified", "rejected"),
+                    ("needs-review", "approved"),
+                    ("blocked", "approved"),
+                ),
+                1,
+            ):
+                entries.append(
+                    {
+                        "title": f"Excluded candidate {index}",
+                        "captureType": "how-to",
+                        "session": "Review",
+                        "startSeconds": index,
+                        "recordingUrl": f"https://contoso.example/{index}",
+                        "outcome": "Must not leave the review gate.",
+                        "verification": verification,
+                        "approval": approval,
+                    }
+                )
+            source = root / "entries.json"
+            source.write_text(json.dumps(entries), encoding="utf-8")
+            out = root / "output"
+            result = run_script(
+                "build_library.py",
+                "--entries",
+                source,
+                "--config",
+                config,
+                "--out-dir",
+                out,
+            )
+            summary = json.loads(result.stdout)
+            self.assertEqual(4, summary["candidatesProcessed"])
+            self.assertEqual(0, summary["entriesPublished"])
+            payload = json.loads(
+                (out / "meeting-moments-library.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual([], payload["entries"])
+            with (out / "meeting-moments-library.csv").open(
+                encoding="utf-8-sig", newline=""
+            ) as handle:
+                self.assertEqual([], list(csv.DictReader(handle)))
+            page = (out / "meeting-moments-library.html").read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("Excluded candidate", page)
 
     def test_unsafe_url_rejects_entry_before_output(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -531,7 +600,10 @@ class LibraryBuilderTests(unittest.TestCase):
         self.assertIn("excludes the meeting before candidate extraction", skill)
         self.assertIn("skip the meeting before", discovery)
         self.assertNotIn("authorized recording/recap URL", readme)
-        self.assertIn("resolves the recording file automatically", readme)
+        self.assertIn(
+            "resolve the correct transcript and recording file automatically",
+            readme,
+        )
 
 
 if __name__ == "__main__":

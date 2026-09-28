@@ -21,6 +21,8 @@
 | `evidenceNote` | no | Short provenance note without full transcript text |
 | `sourceLabel` | no | Human label, not a local filesystem path |
 
-The builder rejects any entry without a validated HTTPS recording URL. Meetings without
-an automatically resolved recording are excluded before candidate extraction and never
-appear in HTML, CSV, or JSON.
+The builder rejects any entry without a validated HTTPS recording URL. All three final
+outputs contain only entries that are verified, explicitly approved, recording-linked,
+and free of validation issues. Held, rejected, needs-review, and blocked candidates remain
+only in the review conversation or temporary working data and never appear in downloadable
+HTML, CSV, or JSON.

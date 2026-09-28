@@ -189,6 +189,11 @@ fields, or cancel.
 Do not generate a publish-ready library before confirmation. Draft output may be created
 for review, but label it `draft`.
 
+The downloadable HTML, CSV, and JSON are final publication outputs. Include only entries
+that are `verified`, explicitly `approved`, have an automatically resolved HTTPS recording
+URL, and have no validation issues. Never include held, rejected, blocked, or needs-review
+candidates in those files.
+
 ## Phase 6 — Build the library files
 
 Write the approved entries to `working/entries.json`, then run:

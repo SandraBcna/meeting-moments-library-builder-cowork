@@ -237,13 +237,7 @@ def csv_safe(value: Any) -> Any:
 
 
 def build_html(config: dict[str, Any], entries: list[dict[str, Any]]) -> str:
-    approved = [
-        entry
-        for entry in entries
-        if entry["verification"] == "verified"
-        and entry["approval"] == "approved"
-        and entry["recordingUrl"]
-    ]
+    approved = entries
     name = html.escape(str(config.get("libraryName", "Meeting Moments Library")))
     subtitle = html.escape(
         str(config.get("subtitle", "Verified moments from authorized meetings"))
@@ -355,9 +349,19 @@ def main() -> None:
     csv_path = args.out_dir / f"{base}.csv"
     html_path = args.out_dir / f"{base}.html"
 
+    issue_ids = {issue.get("id") for issue in issues if issue.get("id")}
+    approved_entries = [
+        entry
+        for entry in entries
+        if entry["verification"] == "verified"
+        and entry["approval"] == "approved"
+        and bool(entry["recordingUrl"])
+        and entry["id"] not in issue_ids
+    ]
+
     include_evidence = bool(output_config.get("includeEvidenceNotesInJson", True))
     json_entries = []
-    for entry in entries:
+    for entry in approved_entries:
         serialized = dict(entry)
         if not include_evidence:
             serialized.pop("evidenceNote", None)
@@ -367,7 +371,6 @@ def main() -> None:
         "libraryName": config.get("libraryName", "Meeting Moments Library"),
         "captureType": config.get("capture", {}).get("type", "custom"),
         "entries": json_entries,
-        "issues": issues,
     }
     json_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -391,26 +394,20 @@ def main() -> None:
         "approval",
         "sourceLabel",
     ]
-    include_held = bool(output_config.get("includeHeldInCsv", True))
     with csv_path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
-        for entry in entries:
-            if include_held or entry["approval"] == "approved":
-                writer.writerow({key: csv_safe(value) for key, value in entry.items()})
+        for entry in approved_entries:
+            writer.writerow({key: csv_safe(value) for key, value in entry.items()})
 
-    html_path.write_text(build_html(config, entries), encoding="utf-8")
-    approved = sum(
-        entry["verification"] == "verified"
-        and entry["approval"] == "approved"
-        and bool(entry["recordingUrl"])
-        for entry in entries
-    )
+    html_path.write_text(build_html(config, approved_entries), encoding="utf-8")
+    approved = len(approved_entries)
     print(
         json.dumps(
             {
                 "status": "success",
-                "entries": len(entries),
+                "candidatesProcessed": len(entries),
+                "entriesPublished": approved,
                 "approvedForHtml": approved,
                 "issues": issues,
                 "outputs": [str(html_path), str(csv_path), str(json_path)],

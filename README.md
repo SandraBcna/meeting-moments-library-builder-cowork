@@ -71,7 +71,8 @@ agent is required.
 | `meeting-moments-library.json` | Structured source of truth for future updates |
 
 Only approved, transcript-verified moments with a validated HTTPS recording link are
-published.
+published. Held, rejected, blocked, and needs-review candidates are not included in any
+downloadable output.
 
 ## Acceptance checklist
 

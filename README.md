@@ -39,6 +39,12 @@ The real Cowork discovery-only test invoked the custom skill, found the exact bo
 calendar occurrence, confirmed one associated transcript object, and completed without
 reading, quoting, summarizing, or displaying transcript content.
 
+A separate automatic resolver test used a recurring meeting series with multiple
+occurrences. Cowork selected the intended occurrence, matched the transcript by creation
+time rather than array order, found the corresponding authorized MP4 in Microsoft 365
+file search, distinguished it from the previous week's recording, and returned the
+existing recording URL without asking for manual input. No transcript content was read.
+
 In the Cowork test, the skill invoked successfully, selected the correct timestamped
 how-to, excluded an unrelated decision, displayed the review table, required explicit
 approval, and generated HTML, CSV, and JSON with one approved entry and zero warnings.

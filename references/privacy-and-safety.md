@@ -34,7 +34,8 @@ Do not include:
 - private calendar details unrelated to the moment;
 - inferred presenter identities;
 - customer data not required for the approved use; or
-- a recording URL that the user did not supply or authorize.
+- a recording URL that was not automatically resolved through the user's authorized
+  Microsoft 365 access.
 
 ## External meetings
 

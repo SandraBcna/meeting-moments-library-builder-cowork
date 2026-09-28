@@ -151,7 +151,7 @@ Use `capture.criteria` from the selected preset. For each candidate capture:
 - presenter only when evidenced;
 - start and end seconds;
 - duration;
-- recording URL only when supplied or resolved through authorized Microsoft 365 access;
+- recording URL resolved automatically through authorized Microsoft 365 access;
 - one-line outcome;
 - category;
 - verification status; and

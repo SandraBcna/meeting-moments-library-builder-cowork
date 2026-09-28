@@ -84,8 +84,9 @@ Ask Cowork to search a bounded date range and named meeting series:
 The skill shows matching meetings, asks which ones to process when needed, reads accessible
 transcripts, shows every proposed entry for approval, then delivers the three files.
 
-If Cowork cannot reach a transcript or durable recording link, attach `.vtt`, `.srt`, or
-`.txt` captions and the authorized recording/recap URL.
+If Cowork cannot reach a transcript, attach `.vtt`, `.srt`, or `.txt` captions. Cowork
+still resolves the recording file automatically; if it cannot, the meeting is skipped
+with a precise blocker.
 
 Because this is a video library, Cowork only extracts candidates after it has automatically
 resolved both the transcript and the recording file. Meetings with transcripts but no

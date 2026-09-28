@@ -524,11 +524,14 @@ class LibraryBuilderTests(unittest.TestCase):
         self.assertEqual("1.2.0", metadata["version"])
         self.assertTrue((ROOT / "references" / "meeting-discovery.md").exists())
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
         discovery = (ROOT / "references" / "meeting-discovery.md").read_text(
             encoding="utf-8"
         )
         self.assertIn("excludes the meeting before candidate extraction", skill)
         self.assertIn("skip the meeting before", discovery)
+        self.assertNotIn("authorized recording/recap URL", readme)
+        self.assertIn("resolves the recording file automatically", readme)
 
 
 if __name__ == "__main__":
